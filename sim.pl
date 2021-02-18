@@ -2,15 +2,17 @@
 
 use common::sense;
 
-my $sens = 0.9;
-my $spec = 0.995;
-my $class = 25;
-my $real_pos = 0.025;
-my $absenteers = 0.04;
+# Here set the inputs
 
-my $total_people = 1500000;
+my $sens = 0.9;			# Sensitivity (ratio of true positives in all positives)
+my $spec = 0.995;		# Specificity (ratio of true negatives in all negatives)
+my $class = 25;			# Number of pupils in a class
+my $real_pos = 0.025;		# Ratio of positive people
+my $absenteers = 0.04;		# Ratio of absenteers for other reasons
+my $total_classes = 600000;	# Total number of classes
+my $total_rounds = 10;		# Number of rounds to simulate
 
-my $total_rounds = 10;
+# End of input section. Here the code begins
 
 my @quarantines = (0)x2;
 
@@ -19,44 +21,42 @@ my $quarantines_bad = 0;
 my $quarantines_unseen = 0;
 my $in_school = 0;
 
-foreach my $round (0 .. $total_rounds) {
+foreach my $round (1 .. $total_rounds) {
   my $total_quarantines = 0;
   foreach my $q (@quarantines) {
     $total_quarantines += $q;
   }
 
-  my ($cnt, $abs, $pos, $neg, $fpos, $fneg) = (0)x6;
   my $qu_this_round;
 
-  foreach my $person (0 .. ($total_people - $total_quarantines*$class)) {
-    # Is not present anyway.
-    if ($absenteers > rand) {
-      $abs++;
-    }
+  foreach my $cl (1 .. ($total_classes - $total_quarantines)) {
+    my ($cnt, $abs, $pos, $neg, $fpos, $fneg) = (0)x6;
+    foreach my $person (1 .. $class) {
+      # Is not present anyway.
+      if ($absenteers > rand) {
+	$abs++;
+      }
 
-    # Positive or negative?
-    elsif ($real_pos > rand) {
-      # Get positive result according to sensitivity
-      if ($sens > rand) {
-	$pos++;
+      # Positive or negative?
+      elsif ($real_pos > rand) {
+	# Get positive result according to sensitivity
+	if ($sens > rand) {
+	  $pos++;
+	}
+	else {
+	  $fpos++;
+	}
       }
       else {
-	$fpos++;
+	# Get negative result according to specificity
+	if ($spec > rand) {
+	  $neg++;
+	}
+	else {
+	  $fneg++;
+	}
       }
     }
-    else {
-      # Get negative result according to specificity
-      if ($spec > rand) {
-	$neg++;
-      }
-      else {
-	$fneg++;
-      }
-    }
-
-    next if ++$cnt < 25;
-
-#    say "$abs $pos $fpos $neg $fneg";
 
     # If positive, quarantine is OK
     if ($pos > 0) {
@@ -85,16 +85,16 @@ foreach my $round (0 .. $total_rounds) {
     else {
       die "Strange numbers: $pos, $fpos, $neg, $fneg, $abs";
     }
-
-    ($cnt, $abs, $pos, $neg, $fpos, $fneg) = (0)x6;
   }
+
+  say "Round $round: Quarantined $qu_this_round of " . ($total_classes - $total_quarantines) . " simulated classes";
 
   push @quarantines, $qu_this_round;
   shift @quarantines;
 }
 
 my $sum = $quarantines_ok + $quarantines_bad + $quarantines_unseen + $in_school;
-die "Strange numbers: $quarantines_ok + $quarantines_bad + $quarantines_unseen + $in_school" unless $sum * 25 * $total_rounds != $total_people;
+die "Strange numbers: $quarantines_ok + $quarantines_bad + $quarantines_unseen + $in_school" unless $sum * $total_rounds != $total_classes;
 
 say "Results (sums):";
 say sprintf "Quarantines OK:\t\t%d (% 2.3f)", $quarantines_ok, ($quarantines_ok * 100) / $sum;
